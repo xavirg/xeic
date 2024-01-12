@@ -14,7 +14,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [linux, windows]
+        os: [linux, darwin, windows]
         arch: [amd64]
     runs-on: ubuntu-latest
     steps:
@@ -26,10 +26,10 @@ jobs:
         go-version: '1.20'
 
     - name: Build
-      run: GOOS=${{matrix.os}} GOARCH=${{matrix.arch}} go build -o bin/xeic-${{matrix.os}}-${{matrix.arch}} -v ./...
+      run: GOOS=${{matrix.os}} GOARCH=${{matrix.arch}} go build -o bin/xeic -v ./...
 
     - name: Upload binaries
       uses: actions/upload-artifact@v4
       with:
-       name: xeic-bin-${{matrix.os}}-${{matrix.arch}}
+       name: xeic-${{matrix.os}}-${{matrix.arch}}
        path: bin
