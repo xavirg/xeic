@@ -28,7 +28,7 @@ var (
 
 func init() {
 	flag.StringVar(&sourcePath, "source", "./", "path for getting files from")
-	flag.BoolVar(&keepOriginal, "keep", false, "don't delete source files")
+	flag.BoolVar(&keepOriginal, "keep", false, "keep source files")
 	flag.StringVar(&destinationPath, "destination", "./output", "path to save the renamed files to")
 }
 
