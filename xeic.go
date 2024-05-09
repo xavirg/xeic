@@ -47,7 +47,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("%v files processed, %v file skipped (%v files in total)", processedFiles, skippedFiles, totalFiles)
+	log.Printf("%v file(s) processed, %v file(s) skipped (%v files in total)", processedFiles, skippedFiles, totalFiles)
 
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.Dir(destinationPath)))
