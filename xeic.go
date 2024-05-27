@@ -24,7 +24,7 @@ const (
 var (
 	sourcePath      string
 	destinationPath string
-	keepOriginal    bool
+	removeOriginals bool
 	processedFiles  int
 	skippedFiles    int
 	totalFiles      int
@@ -34,7 +34,7 @@ var (
 
 func init() {
 	flag.StringVar(&sourcePath, "source", "./", "path for getting files from")
-	flag.BoolVar(&keepOriginal, "keep", true, "keep source files")
+	flag.BoolVar(&removeOriginals, "remove", false, "delete source files")
 	flag.StringVar(&destinationPath, "destination", "./output", "path to save the renamed files to")
 	flag.BoolVar(&verbose, "verbose", false, "verbose mode")
 	flag.StringVar(&port, "port", "80", "give me a port number")
@@ -101,7 +101,7 @@ func processFile(file string) error {
 			return err
 		}
 
-		if !keepOriginal {
+		if removeOriginals {
 			err := os.Remove(file)
 			if err != nil {
 				return err
