@@ -1,16 +1,13 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/evanoberholster/imagemeta"
 	"io"
 	"io/fs"
 	"log"
-	"math"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -28,32 +25,24 @@ var (
 	processedFiles  int
 	skippedFiles    int
 	totalFiles      int
-	verbose         bool
-	port            string
 )
 
 func init() {
 	flag.StringVar(&sourcePath, "source", "./", "path for getting files from")
 	flag.BoolVar(&removeOriginals, "remove", false, "delete source files")
 	flag.StringVar(&destinationPath, "destination", "./output", "path to save the renamed files to")
-	flag.BoolVar(&verbose, "verbose", false, "verbose mode")
-	flag.StringVar(&port, "port", "80", "give me a port number")
 }
 
 func main() {
 	flag.Parse()
+
+	log.Printf("looking for picture files at %s", sourcePath)
 
 	err := filepath.WalkDir(sourcePath, walk)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Printf("%v file(s) processed, %v file(s) skipped (%v files in total)", processedFiles, skippedFiles, totalFiles)
-
-	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.Dir(destinationPath)))
-
-	log.Printf("starting up server on port %s", port)
-	log.Fatal(http.ListenAndServe(":"+port, mux))
 }
 
 func walk(s string, d fs.DirEntry, err error) error {
@@ -61,9 +50,7 @@ func walk(s string, d fs.DirEntry, err error) error {
 		return err
 	}
 	if !d.IsDir() {
-		if verbose {
-			log.Printf("reading %v", s)
-		}
+
 		err = processFile(s)
 		if err != nil {
 			return err
@@ -76,9 +63,6 @@ func processFile(file string) error {
 	totalFiles++
 	extension := strings.ToLower(filepath.Ext(file))
 	if isValidFile(extension) {
-		if verbose {
-			log.Printf("processing %s", file)
-		}
 		timestamp, err := getPictureDateTime(file)
 		if err != nil {
 			return err
@@ -110,7 +94,6 @@ func processFile(file string) error {
 		}
 		processedFiles++
 	} else {
-		log.Printf("skipped %v because it has a non-valid extension", file)
 		skippedFiles++
 	}
 	return nil
@@ -130,25 +113,30 @@ func getPictureDateTime(file string) (time.Time, error) {
 }
 
 func copyFile(src string, destination string) error {
+	if fileExists(destination) {
+		errMsg := fmt.Sprintf("file %s already exists", destination)
+		return errors.New(errMsg)
+	}
+
 	sourceFile, err := os.Open(src)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer sourceFile.Close()
 
 	destinationFile, err := os.Create(destination)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer destinationFile.Close()
 
-	bytesWritten, err := io.Copy(destinationFile, sourceFile)
+	_, err = io.Copy(destinationFile, sourceFile)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	if verbose {
-		log.Printf("copied %v bytes to %v", bytesWritten, destination)
-	}
+
+	log.Printf("processed %s to %s", src, destination)
+
 	return nil
 }
 
@@ -163,31 +151,8 @@ func isValidFile(extension string) bool {
 	return false
 }
 
-func prettyByteSize(b int64) string {
-	bf := float64(b)
-	for _, unit := range []string{"", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"} {
-		if math.Abs(bf) < 1024.0 {
-			return fmt.Sprintf("%3.1f%sB", bf, unit)
-		}
-		bf /= 1024.0
-	}
-	return fmt.Sprintf("%.1fYiB", bf)
-}
+func fileExists(path string) bool {
+	_, err := os.Open(path) // For read access.
+	return err == nil
 
-func setupMutualTLS(ca string) *tls.Config {
-	clientCACert, err := os.ReadFile(ca)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	clientCertPool := x509.NewCertPool()
-	clientCertPool.AppendCertsFromPEM(clientCACert)
-
-	tlsConfig := &tls.Config{
-		ClientAuth: tls.RequireAndVerifyClientCert,
-		ClientCAs:  clientCertPool,
-		MinVersion: tls.VersionTLS12,
-	}
-
-	return tlsConfig
 }
